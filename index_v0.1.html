@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Hourly Chime Clock</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at top, #0d1b2a 0%, #050c14 60%, #000 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Inter', sans-serif; color: #e0f0ff;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, #ffffff55, transparent),
+        radial-gradient(1px 1px at 30% 80%, #ffffff33, transparent),
+        radial-gradient(1px 1px at 50% 40%, #ffffff44, transparent),
+        radial-gradient(1px 1px at 70% 10%, #ffffff22, transparent),
+        radial-gradient(1px 1px at 85% 60%, #ffffff44, transparent),
+        radial-gradient(1px 1px at 20% 55%, #ffffff33, transparent),
+        radial-gradient(1px 1px at 60% 90%, #ffffff22, transparent),
+        radial-gradient(1px 1px at 90% 35%, #ffffff33, transparent),
+        radial-gradient(1.5px 1.5px at 45% 65%, #ffffff55, transparent),
+        radial-gradient(1px 1px at 75% 75%, #ffffff44, transparent);
+      z-index: 0; pointer-events: none;
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      width: 420px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(100,180,255,0.2);
+      border-radius: 28px;
+      padding: 36px 32px;
+      box-shadow: 0 0 60px rgba(0,120,255,0.15), 0 0 120px rgba(0,80,200,0.08), inset 0 1px 0 rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+    }
+
+    h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: #7cc8ff; text-align: center; margin-bottom: 28px;
+      text-shadow: 0 0 20px rgba(100,180,255,0.5);
+    }
+
+    .clock-face { text-align: center; margin-bottom: 28px; position: relative; }
+
+    .clock-display {
+      font-family: 'Orbitron', monospace;
+      font-size: 3.2rem; font-weight: 900;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, #ffffff, #7cc8ff, #4aa8ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 20px rgba(100,200,255,0.4));
+      line-height: 1;
+    }
+
+    .clock-ampm {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.9rem; letter-spacing: 3px;
+      color: #7cc8ff; margin-top: 6px; opacity: 0.85; min-height: 1.2em;
+    }
+
+    .clock-date {
+      font-size: 0.78rem; color: #5a9acc; letter-spacing: 2px;
+      margin-top: 6px; text-transform: uppercase;
+    }
+
+    .ring-wrap { position: relative; display: inline-block; margin-bottom: 4px; }
+    .ring-wrap::after {
+      content: '';
+      position: absolute; inset: -12px; border-radius: 16px;
+      background: transparent;
+      border: 1px solid rgba(100,180,255,0.12);
+      box-shadow: 0 0 30px rgba(80,160,255,0.1);
+      pointer-events: none;
+    }
+
+    .status-bar {
+      background: rgba(0,40,80,0.5);
+      border: 1px solid rgba(100,180,255,0.15);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 0.78rem; color: #5a9acc;
+      text-align: center; margin-bottom: 24px; min-height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      letter-spacing: 0.5px;
+    }
+    .status-bar.active  { color: #5dde8a; border-color: rgba(80,220,130,0.25); }
+    .status-bar.inactive{ color: #ff7a5a; border-color: rgba(255,100,80,0.2); }
+
+    .section-label {
+      font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase;
+      color: #3d6b8a; margin-bottom: 10px; font-weight: 600;
+    }
+
+    .toggle-group   { display: flex; gap: 8px; margin-bottom: 20px; }
+    .interval-group { display: flex; gap: 8px; margin-bottom: 24px; }
+
+    .toggle-btn, .interval-btn {
+      flex: 1; padding: 9px 4px;
+      background: rgba(0,30,60,0.6);
+      border: 1px solid rgba(100,180,255,0.15);
+      border-radius: 10px;
+      color: #5a9acc; font-family: 'Orbitron', monospace;
+      font-size: 0.72rem; letter-spacing: 1px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .toggle-btn:hover, .interval-btn:hover { border-color: rgba(100,180,255,0.4); color: #aaddff; }
+
+    .toggle-btn.active {
+      background: linear-gradient(135deg, rgba(40,120,220,0.5), rgba(20,80,180,0.4));
+      border-color: rgba(100,180,255,0.6); color: #fff;
+      box-shadow: 0 0 14px rgba(80,160,255,0.25);
+    }
+    .interval-btn.active {
+      background: linear-gradient(135deg, rgba(80,40,200,0.5), rgba(50,20,160,0.4));
+      border-color: rgba(160,120,255,0.6); color: #fff;
+      box-shadow: 0 0 14px rgba(120,80,255,0.25);
+    }
+
+    /* ── Volume slider ── */
+    .volume-row {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .volume-icon { font-size: 1.1rem; flex-shrink: 0; width: 22px; text-align: center; }
+
+    .volume-slider-wrap { flex: 1; position: relative; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%; height: 4px;
+      background: linear-gradient(to right, #4aa8ff var(--val, 70%), rgba(100,180,255,0.15) var(--val, 70%));
+      border-radius: 4px; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: radial-gradient(circle, #aaddff, #4aa8ff);
+      border: 2px solid rgba(100,200,255,0.6);
+      box-shadow: 0 0 10px rgba(80,180,255,0.5);
+      cursor: pointer; transition: transform 0.15s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    .volume-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem; color: #7cc8ff;
+      width: 42px; text-align: right; flex-shrink: 0; letter-spacing: 1px;
+    }
+
+    .btn-row { display: flex; gap: 10px; }
+
+    .btn-start {
+      flex: 2; padding: 13px;
+      background: linear-gradient(135deg, #1a6ecc, #0d4fa0);
+      border: 1px solid rgba(100,180,255,0.4);
+      border-radius: 12px; color: #fff;
+      font-family: 'Orbitron', monospace; font-size: 0.8rem; letter-spacing: 2px;
+      cursor: pointer; transition: all 0.25s;
+      box-shadow: 0 4px 20px rgba(20,100,220,0.3);
+    }
+    .btn-start:hover {
+      background: linear-gradient(135deg, #2280e0, #1460bb);
+      box-shadow: 0 4px 28px rgba(30,120,255,0.5); transform: translateY(-1px);
+    }
+    .btn-start.running {
+      background: linear-gradient(135deg, #c0392b, #922b21);
+      border-color: rgba(255,100,80,0.5);
+      box-shadow: 0 4px 20px rgba(200,50,40,0.35);
+    }
+    .btn-start.running:hover { background: linear-gradient(135deg, #d44333, #a33025); }
+
+    .btn-test {
+      flex: 1; padding: 13px;
+      background: rgba(0,40,80,0.6);
+      border: 1px solid rgba(100,180,255,0.2);
+      border-radius: 12px; color: #7cc8ff;
+      font-family: 'Orbitron', monospace; font-size: 0.72rem; letter-spacing: 1px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-test:hover {
+      border-color: rgba(100,220,255,0.5); color: #aaeeff;
+      box-shadow: 0 0 16px rgba(80,200,255,0.2); transform: translateY(-1px);
+    }
+    .btn-test:active { transform: scale(0.97); }
+
+    .chime-flash {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(100,200,255,0.08), transparent 70%);
+      pointer-events: none; opacity: 0; z-index: 999; transition: opacity 0.1s;
+    }
+    .chime-flash.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<div class="chime-flash" id="flash"></div>
+
+<div class="container">
+  <h1>⏱ Hourly Chime</h1>
+
+  <div class="clock-face">
+    <div class="ring-wrap">
+      <div class="clock-display" id="clockDisplay">--:--:--</div>
+    </div>
+    <div class="clock-ampm" id="clockAmPm"></div>
+    <div class="clock-date" id="clockDate"></div>
+  </div>
+
+  <div class="status-bar inactive" id="statusBar">Chime is off — press Start to begin</div>
+
+  <div class="section-label">Clock Format</div>
+  <div class="toggle-group">
+    <button class="toggle-btn" id="btn12" onclick="setFormat(12)">12-HR AM/PM</button>
+    <button class="toggle-btn active" id="btn24" onclick="setFormat(24)">24-HR</button>
+  </div>
+
+  <div class="section-label">Chime Every</div>
+  <div class="interval-group">
+    <button class="interval-btn active" id="int60" onclick="setInterval_(60)">:00 (1 hr)</button>
+    <button class="interval-btn" id="int30" onclick="setInterval_(30)">:30 min</button>
+    <button class="interval-btn" id="int15" onclick="setInterval_(15)">:15 min</button>
+  </div>
+
+  <div class="section-label">Volume</div>
+  <div class="volume-row">
+    <span class="volume-icon" id="volIcon">🔊</span>
+    <div class="volume-slider-wrap">
+      <input type="range" id="volumeSlider" min="0" max="100" step="10" value="70"
+             oninput="updateVolume(this.value)" />
+    </div>
+    <span class="volume-label" id="volLabel">70%</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-start" id="btnStart" onclick="toggleChime()">▶ START CHIME</button>
+    <button class="btn-test" onclick="testChime()">🔔 TEST</button>
+  </div>
+</div>
+
+<script>
+  let clockFormat = 24;
+  let chimeInterval = 60;
+  let chimeRunning = false;
+  let chimeTimeout = null;
+  let volumeLevel = 0.70; // 0.0 to 1.0
+
+  // --- Clock: updates every second ---
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    let displayH, ampm = '';
+    if (clockFormat === 12) {
+      ampm = h >= 12 ? 'PM' : 'AM';
+      displayH = h % 12 || 12;
+    } else { displayH = h; }
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('clockDisplay').textContent = `${pad(displayH)}:${pad(m)}:${pad(s)}`;
+    document.getElementById('clockAmPm').textContent = ampm;
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('clockDate').textContent =
+      `${days[now.getDay()]}  •  ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // --- Volume: updates slider fill, label, and icon ---
+  function updateVolume(val) {
+    volumeLevel = val / 100;
+    document.getElementById('volLabel').textContent = val + '%';
+    document.getElementById('volumeSlider').style.setProperty('--val', val + '%');
+    const icon = document.getElementById('volIcon');
+    if (val == 0)       icon.textContent = '🔇';
+    else if (val <= 30) icon.textContent = '🔈';
+    else if (val <= 60) icon.textContent = '🔉';
+    else                icon.textContent = '🔊';
+  }
+  updateVolume(70); // set default on load
+
+  // --- Switch between 12hr and 24hr ---
+  function setFormat(f) {
+    clockFormat = f;
+    document.getElementById('btn12').classList.toggle('active', f === 12);
+    document.getElementById('btn24').classList.toggle('active', f === 24);
+  }
+
+  // --- Set chime interval (15, 30, or 60 mins) ---
+  function setInterval_(mins) {
+    chimeInterval = mins;
+    ['int60','int30','int15'].forEach(id => document.getElementById(id).classList.remove('active'));
+    const map = {60:'int60', 30:'int30', 15:'int15'};
+    document.getElementById(map[mins]).classList.add('active');
+    if (chimeRunning) { clearTimeout(chimeTimeout); scheduleNext(); }
+  }
+
+  // --- Calculate exact time to next chime and set a timer ---
+  function scheduleNext() {
+    const now = new Date();
+    const totalMins = now.getHours() * 60 + now.getMinutes();
+    const nextMark = (Math.floor(totalMins / chimeInterval) + 1) * chimeInterval;
+    const nextHour = Math.floor(nextMark / 60) % 24;
+    const nextMin  = nextMark % 60;
+    const next = new Date(now);
+    next.setHours(nextHour, nextMin, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const delay = next - now;
+    let timeStr;
+    if (clockFormat === 12) {
+      let h = nextHour % 12 || 12, ap = nextHour >= 12 ? 'PM' : 'AM';
+      timeStr = `${h}:${String(nextMin).padStart(2,'0')} ${ap}`;
+    } else {
+      timeStr = `${String(nextHour).padStart(2,'0')}:${String(nextMin).padStart(2,'0')}`;
+    }
+    document.getElementById('statusBar').textContent = `🔔 Active — next chime at ${timeStr}`;
+    document.getElementById('statusBar').className = 'status-bar active';
+    chimeTimeout = setTimeout(() => {
+      playChime();
+      if (chimeRunning) scheduleNext();
+    }, delay);
+  }
+
+  // --- Start / Stop ---
+  function toggleChime() {
+    const btn = document.getElementById('btnStart');
+    if (!chimeRunning) {
+      chimeRunning = true;
+      btn.textContent = '⏹ STOP CHIME';
+      btn.classList.add('running');
+      scheduleNext();
+    } else {
+      chimeRunning = false;
+      clearTimeout(chimeTimeout);
+      btn.textContent = '▶ START CHIME';
+      btn.classList.remove('running');
+      document.getElementById('statusBar').textContent = 'Chime is off — press Start to begin';
+      document.getElementById('statusBar').className = 'status-bar inactive';
+    }
+  }
+
+  // --- Play 4-note bell chord, routed through a master volume node ---
+  function playChime() {
+    if (volumeLevel === 0) return; // skip if muted
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = volumeLevel; // applies user-chosen volume
+    masterGain.connect(ctx.destination);
+
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(masterGain); // through master volume
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.22; // stagger notes by 0.22s
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.04); // quick attack
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2); // slow decay
+      osc.start(t); osc.stop(t + 1.2);
+    });
+
+    // brief screen flash
+    const flash = document.getElementById('flash');
+    flash.classList.add('show');
+    setTimeout(() => flash.classList.remove('show'), 400);
+    setTimeout(() => ctx.close(), 2000);
+  }
+
+  function testChime() { playChime(); }
+</script>
+</body>
+</html>
